@@ -3,18 +3,37 @@ from string import ascii_letters, digits
 from telegram.ext import CommandHandler
 from threading import Thread
 from time import sleep
-
+from telegram import InlineKeyboardMarkup, ParseMode
+from bot.helper.telegram_helper.button_build import ButtonMaker
 from bot.helper.mirror_utils.upload_utils.gdriveTools import GoogleDriveHelper
-from bot.helper.telegram_helper.message_utils import sendMessage, deleteMessage, delete_all_messages, update_all_messages, sendStatusMessage, sendFile, sendMarkup
+from bot.helper.telegram_helper.message_utils import sendMessage, sendMarkup, deleteMessage, delete_all_messages, update_all_messages, sendStatusMessage, auto_delete_upload_message, auto_delete_message, sendFile, sendPhoto
 from bot.helper.telegram_helper.filters import CustomFilters
 from bot.helper.telegram_helper.bot_commands import BotCommands
 from bot.helper.mirror_utils.status_utils.clone_status import CloneStatus
 from bot.helper.mirror_utils.download_utils.direct_link_generator import direct_link_generator
-from bot import dispatcher, LOGGER, STOP_DUPLICATE, download_dict, download_dict_lock, Interval
+from bot import dispatcher, LOGGER, STOP_DUPLICATE, download_dict, download_dict_lock, Interval, FSUB_CHANNEL_ID, CHANNEL_USERNAME, FSUB
 from bot.helper.ext_utils.bot_utils import is_gdrive_link, new_thread
 
 
 def _clone(message, bot):
+    if FSUB:
+        try:
+            user = bot.get_chat_member(f"{FSUB_CHANNEL_ID}", message.from_user.id)
+            LOGGER.info(user.status)
+            if user.status not in ("member", "creator", "administrator", "supergroup"):
+                if message.from_user.username:
+                    uname = f'<a href="tg://user?id={message.from_user.id}">{message.from_user.username}</a>'
+                else:
+                    uname = f'<a href="tg://user?id={message.from_user.id}">{message.from_user.first_name}</a>'
+                buttons = ButtonMaker()
+                chat_u = CHANNEL_USERNAME.replace("@", "")
+                buttons.buildbutton("👉🏻 CHANNEL LINK 👈🏻", f"https://t.me/{chat_u}")
+                help_msg = f"Dᴇᴀʀ {uname},\nYᴏᴜ ɴᴇᴇᴅ ᴛᴏ ᴊᴏɪɴ ᴍʏ Cʜᴀɴɴᴇʟ ᴛᴏ ᴜsᴇ Bᴏᴛ \n\nCʟɪᴄᴋ ᴏɴ ᴛʜᴇ ʙᴇʟᴏᴡ Bᴜᴛᴛᴏɴ ᴛᴏ ᴊᴏɪɴ ᴍʏ Cʜᴀɴɴᴇʟ."
+                reply_message = sendMarkup(help_msg, bot, message, InlineKeyboardMarkup(buttons.build_menu(2)))
+                Thread(target=auto_delete_message, args=(bot, message, reply_message)).start()
+                return reply_message
+        except Exception:
+            pass
     args = message.text.split()
     reply_to = message.reply_to_message
     link = ''
