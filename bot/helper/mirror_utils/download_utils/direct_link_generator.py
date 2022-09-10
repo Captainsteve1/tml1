@@ -75,7 +75,7 @@ def direct_link_generator(link: str):
     elif any(x in link for x in ['sbembed.com', 'watchsb.com', 'streamsb.net', 'sbplay.org']):
         return sbembed(link)
     else:
-        raise DirectDownloadLinkException(f'No Direct link function found for {link}')
+        return link
 
 def yandex_disk(url: str) -> str:
     """ Yandex.Disk direct link generator
