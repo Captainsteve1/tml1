@@ -443,6 +443,25 @@ try:
 except:
     SEARCH_PLUGINS = None
 
+try:
+    CRYPT = getConfig('CRYPT')
+    if len(CRYPT) == 0:
+        raise KeyError
+except:
+    CRYPT = None
+try:
+    UNIFIED_EMAIL = getConfig('UNIFIED_EMAIL')
+    if len(UNIFIED_EMAIL) == 0:
+        raise KeyError
+except:
+    UNIFIED_EMAIL = None
+try:
+    UNIFIED_PASS = getConfig('UNIFIED_PASS')
+    if len(UNIFIED_PASS) == 0:
+        raise KeyError
+except:
+    UNIFIED_PASS = None
+
 updater = tgUpdater(token=BOT_TOKEN, request_kwargs={'read_timeout': 20, 'connect_timeout': 15})
 bot = updater.bot
 dispatcher = updater.dispatcher
