@@ -271,6 +271,11 @@ try:
 except:
     CMD_INDEX = ''
 try:
+    FORCE_BOT_PM = getConfig('FORCE_BOT_PM')
+    FORCE_BOT_PM = FORCE_BOT_PM.lower() == 'true'
+except KeyError:
+    FORCE_BOT_PM = True
+try:
     RSS_CHAT_ID = getConfig('RSS_CHAT_ID')
     if len(RSS_CHAT_ID) == 0:
         raise KeyError
