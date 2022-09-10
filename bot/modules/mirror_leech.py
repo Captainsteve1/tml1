@@ -22,15 +22,64 @@ from .listener import MirrorLeechListener
 
 
 def _mirror_leech(bot, message, isZip=False, extract=False, isQbit=False, isLeech=False):
+    buttons = ButtonMaker()
+	
+    if FSUB:
+        try:
+            user = bot.get_chat_member(f"{FSUB_CHANNEL_ID}", message.from_user.id)
+            LOGGER.info(user.status)
+            if user.status not in ("member", "creator", "administrator", "supergroup"):
+                if message.from_user.username:
+                    uname = f'<a href="tg://user?id={message.from_user.id}">{message.from_user.username}</a>'
+                else:
+                    uname = f'<a href="tg://user?id={message.from_user.id}">{message.from_user.first_name}</a>'
+                buttons = ButtonMaker()
+                chat_u = CHANNEL_USERNAME.replace("@", "")
+                buttons.buildbutton("👉🏻 CHANNEL LINK 👈🏻", f"https://t.me/{chat_u}")
+                help_msg = f"Dᴇᴀʀ {uname},\nYᴏᴜ ɴᴇᴇᴅ ᴛᴏ ᴊᴏɪɴ ᴍʏ Cʜᴀɴɴᴇʟ ᴛᴏ ᴜsᴇ Bᴏᴛ \n\nCʟɪᴄᴋ ᴏɴ ᴛʜᴇ ʙᴇʟᴏᴡ Bᴜᴛᴛᴏɴ ᴛᴏ ᴊᴏɪɴ ᴍʏ Cʜᴀɴɴᴇʟ."
+                reply_message = sendMarkup(help_msg, bot, message, InlineKeyboardMarkup(buttons.build_menu(2)))
+                Thread(target=auto_delete_message, args=(bot, message, reply_message)).start()
+                return reply_message
+        except Exception:
+            pass
+    if BOT_PM and message.chat.type != 'private':
+        try:
+            msg1 = f'Added your Requested link to Download\n'
+            send = bot.sendMessage(message.from_user.id, text=msg1)
+            send.delete()
+        except Exception as e:
+            LOGGER.warning(e)
+            bot_d = bot.get_me()
+            b_uname = bot_d.username
+            uname = f'<a href="tg://user?id={message.from_user.id}">{message.from_user.first_name}</a>'
+            botstart = f"http://t.me/{b_uname}"
+            buttons.buildbutton("Click Here to Start Me", f"{botstart}")
+            startwarn = f"Dear {uname},\n\n<b>I found that you haven't started me in PM (Private Chat) yet.</b>\n\n" \
+                        f"From now on i will give link and leeched files in PM and log channel only"
+            reply_message = sendMarkup(startwarn, bot, message, InlineKeyboardMarkup(buttons.build_menu(2)))
+            Thread(target=auto_delete_message, args=(bot, message, reply_message)).start()
+            return reply_message
+
+    total_task = len(download_dict)
+    user_id = message.from_user.id
+    if user_id != OWNER_ID and user_id not in SUDO_USERS:
+            if TOTAL_TASKS_LIMIT == total_task:
+                return sendMessage(f"<b>Bot Total Task Limit : {TOTAL_TASKS_LIMIT}\nTasks Processing : {total_task}\n#total limit exceed </b>", bot ,message)
+            if USER_TASKS_LIMIT == get_user_task(user_id):
+                return sendMessage(f"<b>Bot Total Task Limit : {USER_TASKS_LIMIT} \nYour Tasks : {get_user_task(user_id)}\n#user limit exceed</b>", bot ,message)
+
     mesg = message.text.split('\n')
     message_args = mesg[0].split(maxsplit=1)
     name_args = mesg[0].split('|', maxsplit=1)
+    is_gdtot = False
+    is_unified = False
+    is_udrive = False
     index = 1
     ratio = None
     seed_time = None
     select = False
     seed = False
-    multi = 0
+    multi=1
 
     if len(message_args) > 1:
         args = mesg[0].split(maxsplit=3)
