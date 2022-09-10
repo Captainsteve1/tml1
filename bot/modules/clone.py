@@ -32,7 +32,8 @@ def _clone(message, bot):
                 reply_message = sendMarkup(help_msg, bot, message, InlineKeyboardMarkup(buttons.build_menu(2)))
                 Thread(target=auto_delete_message, args=(bot, message, reply_message)).start()
                 return reply_message
-        except Exception:
+        except Exception as e:
+            LOGGER.exception(e)
             pass
     args = message.text.split()
     reply_to = message.reply_to_message
