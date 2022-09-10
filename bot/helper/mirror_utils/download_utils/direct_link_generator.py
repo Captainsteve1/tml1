@@ -17,6 +17,7 @@ from cfscrape import create_scraper
 from bs4 import BeautifulSoup
 from base64 import standard_b64encode
 from time import sleep
+from lxml import etree
 from bot.helper.ext_utils.bot_utils import *
 from bot import LOGGER, UPTOBOX_TOKEN, CRYPT, UNIFIED_EMAIL, UNIFIED_PASS
 from bot.helper.ext_utils.exceptions import DirectDownloadLinkException
