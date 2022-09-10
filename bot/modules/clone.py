@@ -9,6 +9,7 @@ from bot.helper.telegram_helper.message_utils import sendMessage, deleteMessage,
 from bot.helper.telegram_helper.filters import CustomFilters
 from bot.helper.telegram_helper.bot_commands import BotCommands
 from bot.helper.mirror_utils.status_utils.clone_status import CloneStatus
+from bot.helper.mirror_utils.download_utils.direct_link_generator import direct_link_generator
 from bot import dispatcher, LOGGER, STOP_DUPLICATE, download_dict, download_dict_lock, Interval
 from bot.helper.ext_utils.bot_utils import is_gdrive_link, new_thread
 
@@ -34,6 +35,7 @@ def _clone(message, bot):
             tag = f"@{reply_to.from_user.username}"
         else:
             tag = reply_to.from_user.mention_html(reply_to.from_user.first_name)
+    link = direct_link_generator(link)
     if is_gdrive_link(link):
         gd = GoogleDriveHelper()
         res, size, name, files = gd.helper(link)
