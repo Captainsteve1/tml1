@@ -40,9 +40,9 @@ def _mirror_leech(bot, message, isZip=False, extract=False, isQbit=False, isLeec
                 reply_message = sendMarkup(help_msg, bot, message, InlineKeyboardMarkup(buttons.build_menu(2)))
                 Thread(target=auto_delete_message, args=(bot, message, reply_message)).start()
                 return reply_message
-        except Exception:
+        except Exception as e:
+            LOGGER.exception(e)
             pass
-    
     mesg = message.text.split('\n')
     message_args = mesg[0].split(maxsplit=1)
     name_args = mesg[0].split('|', maxsplit=1)
