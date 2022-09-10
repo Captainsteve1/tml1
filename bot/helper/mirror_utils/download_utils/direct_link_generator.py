@@ -10,15 +10,15 @@ for original authorship. """
 
 from requests import get as rget, head as rhead, post as rpost, Session as rsession
 from re import findall as re_findall, sub as re_sub, match as re_match, search as re_search
-from urllib.parse import urlparse, unquote
+from urllib.parse import urlparse, unquote, parse_qs
 from json import loads as jsonloads
 from lk21 import Bypass
 from cfscrape import create_scraper
 from bs4 import BeautifulSoup
 from base64 import standard_b64encode
 from time import sleep
-
-from bot import LOGGER, UPTOBOX_TOKEN
+from bot.helper.ext_utils.bot_utils import *
+from bot import LOGGER, UPTOBOX_TOKEN, CRYPT, UNIFIED_EMAIL, UNIFIED_PASS
 from bot.helper.ext_utils.exceptions import DirectDownloadLinkException
 
 fmed_list = ['fembed.net', 'fembed.com', 'femax20.com', 'fcdn.stream', 'feurl.com', 'layarkacaxxi.icu',
@@ -65,6 +65,10 @@ def direct_link_generator(link: str):
         return krakenfiles(link)
     elif 'upload.ee' in link:
         return uploadee(link)
+    elif is_gdtot_link(link):
+        return gdtot(link)
+    elif is_unified_link(link):
+        return unified(link)
     elif any(x in link for x in fmed_list):
         return fembed(link)
     elif any(x in link for x in ['sbembed.com', 'watchsb.com', 'streamsb.net', 'sbplay.org']):
@@ -375,3 +379,119 @@ def uploadee(url: str) -> str:
         return sa['href']
     except:
         raise DirectDownloadLinkException(f"ERROR: Failed to acquire download URL from upload.ee for : {url}")
+
+
+def gdtot(url: str) -> str:
+    """ Gdtot google drive link generator
+    By https://github.com/xcscxr """
+
+    if CRYPT is None:
+        raise DirectDownloadLinkException("ERROR: CRYPT cookie not provided")
+
+    match = re_findall(r'https?://(.+)\.gdtot\.(.+)\/\S+\/\S+', url)[0]
+
+    with rsession() as client:
+        client.cookies.update({'crypt': CRYPT})
+        client.get(url)
+        res = client.get(f"https://{match[0]}.gdtot.{match[1]}/dld?id={url.split('/')[-1]}")
+    matches = re_findall('gd=(.*?)&', res.text)
+    try:
+        decoded_id = b64decode(str(matches[0])).decode('utf-8')
+    except:
+        raise DirectDownloadLinkException("ERROR: Try in your broswer, mostly file not found or user limit exceeded!")
+    return f'https://drive.google.com/open?id={decoded_id}'
+
+account = {
+    'email': UNIFIED_EMAIL, 
+   'passwd': UNIFIED_PASS
+}
+def account_login(client, url, email, password):
+    data = {
+        'email': email,
+        'password': password
+    }
+    client.post(f'https://{urlparse(url).netloc}/login', data=data)
+def gen_payload(data, boundary=f'{"-"*6}_'):
+    data_string = ''
+    for item in data:
+        data_string += f'{boundary}\r\n'
+        data_string += f'Content-Disposition: form-data; name="{item}"\r\n\r\n{data[item]}\r\n'
+    data_string += f'{boundary}--\r\n'
+    return data_string
+
+def parse_infou(data):
+    info = re_findall('>(.*?)<\/li>', data)
+    info_parsed = {}
+    for item in info:
+        kv = [s.strip() for s in item.split(':', maxsplit = 1)]
+        info_parsed[kv[0].lower()] = kv[1]
+    return info_parsed
+
+def unified(url: str) -> str:
+    if (UNIFIED_EMAIL or UNIFIED_PASS) is None:
+        raise DirectDownloadLinkException("UNIFIED_EMAIL and UNIFIED_PASS env vars not provided")
+    client = cloudscraper.create_scraper(delay=10, browser='chrome')
+    client.headers.update({
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36"
+    })
+    account_login(client, url, account['email'], account['passwd'])
+    res = client.get(url)
+    key = re_findall('"key",\s+"(.*?)"', res.text)[0]
+    ddl_btn = etree.HTML(res.content).xpath("//button[@id='drc']")
+    info_parsed = parse_infou(res.text)
+    info_parsed['error'] = False
+    info_parsed['link_type'] = 'login'  # direct/login
+    headers = {
+        "Content-Type": f"multipart/form-data; boundary={'-'*4}_",
+    }
+    data = {
+        'type': 1,
+        'key': key,
+        'action': 'original'
+    }
+    if len(ddl_btn):
+        info_parsed['link_type'] = 'direct'
+        data['action'] = 'direct'
+    while data['type'] <= 3:
+        try:
+            response = client.post(url, data=gen_payload(data), headers=headers).json()
+            break
+        except: data['type'] += 1
+    if 'url' in response:
+        info_parsed['gdrive_link'] = response['url']
+    elif 'error' in response and response['error']:
+        info_parsed['error'] = True
+        info_parsed['error_message'] = response['message']
+    else:
+        info_parsed['error'] = True
+        info_parsed['error_message'] = 'Something went wrong :('
+
+    if info_parsed['error']:
+        raise DirectDownloadLinkException(f"ERROR! {info_parsed['error_message']}")
+
+    if urlparse(url).netloc == 'appdrive.info':
+        flink = info_parsed['gdrive_link']
+        return flink
+
+    elif urlparse(url).netloc == 'driveapp.in':
+        res = client.get(info_parsed['gdrive_link'])
+        drive_link = etree.HTML(res.content).xpath("//a[contains(@class,'btn')]/@href")[0]
+        flink = drive_link
+        return flink
+
+    else:
+        res = client.get(info_parsed['gdrive_link'])
+        drive_link = etree.HTML(res.content).xpath("//a[contains(@class,'btn btn-primary')]/@href")[0]
+        flink = drive_link
+        info_parsed['src_url'] = url
+        return flink
+
+def parse_info(res, url):
+    info_parsed = {}
+    if 'drivebuzz' in url:
+        info_chunks = re.findall('<td\salign="right">(.*?)<\/td>', res.text)
+    else:
+        info_chunks = re_findall('>(.*?)<\/td>', res.text)
+    for i in range(0, len(info_chunks), 2):
+        info_parsed[info_chunks[i]] = info_chunks[i+1]
+    return info_parsed
