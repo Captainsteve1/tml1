@@ -15,6 +15,7 @@ from json import loads as jsonloads
 from lk21 import Bypass
 from base64 import b64decode
 from cfscrape import create_scraper
+import cloudscraper
 from bs4 import BeautifulSoup
 from base64 import standard_b64encode
 from time import sleep
